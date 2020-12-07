@@ -18,27 +18,25 @@ SECTION .text
  global _start
         
 _start:
+
     mov esi,0
-    pop ebx
-    mov [num],ebx
-    cmp ebx,2
+    pop ebx ; pega o argc
+    mov edi,ebx
+    cmp edi,2 ; checa se existe menos de 2 parâmetro
     jl erroParametro
     
     
-    pop ebx
-    pop ecx
+    pop ebx ; remove o ./basename
+    pop ecx ; pega o primeiro argv depois de ./basename
 
-    cmp byte [ecx + edx], '-'
+    cmp byte [ecx + edx], '-' ;checa se há flags
     je flags
-
-    ;cmp ebx,2
-    ;je eMensagemHelp
 
    
 initialize:
     mov edx, 0
 getlen:
-    
+    ; incrementa o contador até encontrar fim da string ou '/'
     cmp byte [ecx + edx], 0
     je gotlenFinish
     cmp byte [ecx + edx], '/'
@@ -47,8 +45,12 @@ getlen:
     inc edx
     jmp getlen
 gotlen:
+    ;ao encontrar '/' zera o contador e move a posiçao de inicio da string
+    ; Exemplo /Documentos/arroz, ao encontrar a / após Documentos a string em
+    ; ecx começaria a partir de a de arroz. 
+
     inc edx
-    cmp byte [ecx + edx], 0
+    cmp byte [ecx + edx], 0 ; caso depois do '/' acabe a string em ecx, remove ela e imprime a string
     je removeUltimaBarra
    
     add ecx,edx
@@ -61,20 +63,25 @@ removeUltimaBarra:
     dec edx
 
 gotlenFinish:
-    
-	mov eax,4	;the system call for write
-	mov ebx,1	;file descriptor for std output
-	int 80h		;call kernal	int 80h	
+    ; imprime a string em ecx
+	mov eax,4	
+	mov ebx,1	
+	int 80h		
 
     cmp esi,1 ; caso a flag seja -z nao imprime /n
     je exit
 
 
-    mov edx, 2    ; msg tem um total de 14 bytes
-    mov ecx, msg2    ; msg contém o endereço da mensagem
-    mov ebx, 1      ; A saída é o console
-    mov eax, 4      ; Optcode de SYS_WRITE
+    mov edx, 2   
+    mov ecx, msg2    
+    mov ebx, 1      
+    mov eax, 4
     int 80h
+
+    cmp esi,2
+    je flagImprimeMultiplos
+
+
     jmp exit   
 
 
@@ -117,17 +124,18 @@ flagHelp:
     jmp exit
 
 
-flagImprimeSemEnter:
-    ; checa se a flag é -z e não -za ou outra coisa
-    cmp byte [ecx+2], 0
-    jne erroParametro
-flagImprimeSemEnter2:   
-    ; checa caso a pessoa entra a flag -z  porém nao passe mais nenhum parâmetro
-    mov ebx,[num] 
-    cmp ebx,2     
-    je erroParametro 
-    
+
+flagImprimeSemEnter:   
     mov esi,1
+    pop ecx
+    jmp initialize
+
+
+flagImprimeMultiplos:
+    cmp edi,0
+    je exit
+    dec edi
+    mov esi,2
     pop ecx
     jmp initialize
 
@@ -164,13 +172,28 @@ flagVersion:
 
 
 
+
 flagMultiple:
-    mov edx,lenVersion    ; msg tem um total de 14 bytes
-    mov ecx, msgVersion    ; msg contém o endereço da mensagem
-    mov ebx, 1      ; A saída é o console
-    mov eax, 4      ; Optcode de SYS_WRITE
-    int 80h 
-    jmp exit
+    cmp byte [ecx+3], 'u'
+    jne erroParametro
+    cmp byte [ecx+4], 'l'
+    jne erroParametro
+    cmp byte [ecx+5], 't'
+    jne erroParametro
+    cmp byte [ecx+6], 'i'
+    jne erroParametro
+    cmp byte [ecx+7], 'p'
+    jne erroParametro
+    cmp byte [ecx+8], 'l'
+    jne erroParametro
+    cmp byte [ecx+9], 'e'
+    jne erroParametro
+    cmp byte [ecx+10], 0
+    jne erroParametro
+
+    jmp flagImprimeMultiplos
+
+
 
 
 flagZero:
@@ -183,7 +206,9 @@ flagZero:
     cmp byte [ecx+6], 0
     jne erroParametro
     
-    jmp flagImprimeSemEnter2
+    jmp flagImprimeSemEnter
+
+
 
 
 flagSufix:
@@ -194,6 +219,8 @@ flagSufix:
     int 80h 
     
     jmp exit
+
+
 
 
 
@@ -219,13 +246,27 @@ flagsDouble:
     jmp erroParametro
 
 
+
+
 flags:
+    sub edi,2 ; retira da contagem do argc 2 parametros o ./main e a possivel flag
+
     cmp byte [ecx+1], '-'
     je flagsDouble
     
+    ; todas as flags que nao sao --algumacoisa, precisam de um 3 argumento minimo
+    cmp edi,0     
+    je erroParametro 
+
+    ; checa se as flag são -z e não -za ou outra coisa
+    cmp byte [ecx+2], 0
+    jne erroParametro
 
     cmp byte [ecx+1], 'z'
     je flagImprimeSemEnter
+
+    cmp byte [ecx+1], 'a'
+    je flagImprimeMultiplos
 
 
     jmp erroParametro
