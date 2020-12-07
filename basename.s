@@ -7,8 +7,8 @@ lenErroParametro equ $-msgErroParametro
 msgHelp db 'Uso:  basename NOME [SUFIXO]',0Ah,' ou:  basename OPÇÃO... NOME...',0Ah,'Mostra o NOME sem quaisquer componentes iniciais de diretório.',0Ah,'Se especificado, remove também o SUFIXO final.',0Ah,'Argumentos obrigatórios para opções longas também o são para opções curtas.',0Ah,'    -a, --multiple       provê suporte a múltiplos argumentos e trata cada um como um NOME',0Ah,'    -s, --suffix=SUFIXO  remove um SUFIXO',59,' implica em -a',0Ah,'    -z, --zero           termina as linhas de saída com NULO, e não nova linha',0Ah,'        --help     mostra esta ajuda e sai',0Ah,'        --version  informa a versão e sai',0Ah,'Exemplos:',0Ah,'    basename /usr/bin/sort          -> "sort"',0Ah,'    basename include/stdio.h .h     -> "stdio"',0Ah, '    basename -s .h include/stdio.h  -> "stdio"',0Ah,'    basename -a algo/txt1 algo/txt2 -> "txt1" seguido de "txt2"',0Ah,0Ah,'Página de ajuda do GNU coreutils: <https://www.gnu.org/software/coreutils/>',0Ah,'Relate erros de tradução do basename: <https://translationproject.org/team/pt_BR.html>',0Ah,'Documentação completa em: <https://www.gnu.org/software/coreutils/basename>',0Ah,'ou disponível localmente via: info "(coreutils) basename invocation"',0Ah,0
 lenHelp equ $-msgHelp
 
-
-
+msgVersion db 'basename (GNU coreutils) 8.30',0Ah,'Copyright (C) 2018 Free Software Foundation, Inc.',0Ah,'Licença GPLv3+: GNU GPL versão 3 ou posterior <https://gnu.org/licenses/gpl.html>',0Ah,'Este é um software livre: você é livre para alterá-lo e redistribuí-lo.',0Ah,'NÃO HÁ QUALQUER GARANTIA, na máxima extensão permitida em lei.',0Ah,0Ah,'Escrito por David MacKenzie.',0Ah,0
+lenVersion equ $-msgVersion
 
 section .bss           ;Uninitialized data
    buffer resb 256
@@ -98,8 +98,6 @@ erroParametro:
 
 flagHelp: 
    ;checa se é a flag help
-    cmp byte [ecx+2], 'h'
-    jne erroParametro
     cmp byte [ecx+3], 'e'
     jne erroParametro
     cmp byte [ecx+4], 'l'
@@ -123,7 +121,7 @@ flagImprimeSemEnter:
     ; checa se a flag é -z e não -za ou outra coisa
     cmp byte [ecx+2], 0
     jne erroParametro
-    
+flagImprimeSemEnter2:   
     ; checa caso a pessoa entra a flag -z  porém nao passe mais nenhum parâmetro
     mov ebx,[num] 
     cmp ebx,2     
@@ -134,9 +132,97 @@ flagImprimeSemEnter:
     jmp initialize
 
 
+
+
+
+flagVersion:
+
+    cmp byte [ecx+3], 'e'
+    jne erroParametro
+    cmp byte [ecx+4], 'r'
+    jne erroParametro
+    cmp byte [ecx+5], 's'
+    jne erroParametro
+    cmp byte [ecx+6], 'i'
+    jne erroParametro
+    cmp byte [ecx+7], 'o'
+    jne erroParametro
+    cmp byte [ecx+8], 'n'
+    jne erroParametro
+    cmp byte [ecx+9], 0
+    jne erroParametro
+    
+
+
+    mov edx,lenVersion    ; msg tem um total de 14 bytes
+    mov ecx, msgVersion    ; msg contém o endereço da mensagem
+    mov ebx, 1      ; A saída é o console
+    mov eax, 4      ; Optcode de SYS_WRITE
+    int 80h 
+    
+    jmp exit
+
+
+
+flagMultiple:
+    mov edx,lenVersion    ; msg tem um total de 14 bytes
+    mov ecx, msgVersion    ; msg contém o endereço da mensagem
+    mov ebx, 1      ; A saída é o console
+    mov eax, 4      ; Optcode de SYS_WRITE
+    int 80h 
+    jmp exit
+
+
+flagZero:
+    cmp byte [ecx+3], 'e'
+    jne erroParametro
+    cmp byte [ecx+4], 'r'
+    jne erroParametro
+    cmp byte [ecx+5], 'o'
+    jne erroParametro
+    cmp byte [ecx+6], 0
+    jne erroParametro
+    
+    jmp flagImprimeSemEnter2
+
+
+flagSufix:
+    mov edx,lenVersion    ; msg tem um total de 14 bytes
+    mov ecx, msgVersion    ; msg contém o endereço da mensagem
+    mov ebx, 1      ; A saída é o console
+    mov eax, 4      ; Optcode de SYS_WRITE
+    int 80h 
+    
+    jmp exit
+
+
+
+
+
+flagsDouble:
+
+    cmp byte [ecx+2], 'v' ; multiple
+    je flagVersion
+
+    cmp byte [ecx+2], 'h' ; help
+    je flagHelp
+
+    cmp byte [ecx+2], 'm' ; multiple
+    je flagMultiple
+
+    cmp byte [ecx+2], 'z' ; multiple
+    je flagZero
+
+    cmp byte [ecx+2], 's' ; multiple
+    je flagSufix
+
+    jmp erroParametro
+
+
 flags:
     cmp byte [ecx+1], '-'
-    je flagHelp
+    je flagsDouble
+    
 
     cmp byte [ecx+1], 'z'
     je flagImprimeSemEnter
