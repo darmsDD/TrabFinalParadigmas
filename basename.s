@@ -79,7 +79,7 @@ gotlenFinish:
     int 80h
 
     cmp esi,2
-    je flagImprimeMultiplos
+    je singleFlagMultiple
 
 
     jmp exit   
@@ -103,7 +103,7 @@ erroParametro:
     jmp exit  
 
 
-flagHelp: 
+doubleFlagHelp: 
    ;checa se é a flag help
     cmp byte [ecx+3], 'e'
     jne erroParametro
@@ -125,13 +125,13 @@ flagHelp:
 
 
 
-flagImprimeSemEnter:   
+singleFlagZero:   
     mov esi,1
     pop ecx
     jmp initialize
 
 
-flagImprimeMultiplos:
+singleFlagMultiple:
     cmp edi,0
     je exit
     dec edi
@@ -143,7 +143,7 @@ flagImprimeMultiplos:
 
 
 
-flagVersion:
+doubleFlagVersion:
 
     cmp byte [ecx+3], 'e'
     jne erroParametro
@@ -173,7 +173,7 @@ flagVersion:
 
 
 
-flagMultiple:
+doubleFlagMultiple:
     cmp byte [ecx+3], 'u'
     jne erroParametro
     cmp byte [ecx+4], 'l'
@@ -191,12 +191,12 @@ flagMultiple:
     cmp byte [ecx+10], 0
     jne erroParametro
 
-    jmp flagImprimeMultiplos
+    jmp singleFlagMultiple
 
 
 
 
-flagZero:
+doubleFlagZero:
     cmp byte [ecx+3], 'e'
     jne erroParametro
     cmp byte [ecx+4], 'r'
@@ -206,12 +206,12 @@ flagZero:
     cmp byte [ecx+6], 0
     jne erroParametro
     
-    jmp flagImprimeSemEnter
+    jmp singleFlagZero
 
 
 
 
-flagSufix:
+doubleFlagSufix:
     mov edx,lenVersion    ; msg tem um total de 14 bytes
     mov ecx, msgVersion    ; msg contém o endereço da mensagem
     mov ebx, 1      ; A saída é o console
@@ -229,19 +229,22 @@ flagSufix:
 flagsDouble:
 
     cmp byte [ecx+2], 'v' ; multiple
-    je flagVersion
+    je doubleFlagVersion
 
     cmp byte [ecx+2], 'h' ; help
-    je flagHelp
+    je doubleFlagHelp
 
+    cmp edi,0     
+    je erroParametro
+    
     cmp byte [ecx+2], 'm' ; multiple
-    je flagMultiple
+    je doubleFlagMultiple
 
     cmp byte [ecx+2], 'z' ; multiple
-    je flagZero
+    je doubleFlagZero
 
     cmp byte [ecx+2], 's' ; multiple
-    je flagSufix
+    je doubleFlagSufix
 
     jmp erroParametro
 
@@ -263,10 +266,10 @@ flags:
     jne erroParametro
 
     cmp byte [ecx+1], 'z'
-    je flagImprimeSemEnter
+    je singleFlagZero
 
     cmp byte [ecx+1], 'a'
-    je flagImprimeMultiplos
+    je singleFlagMultiple
 
 
     jmp erroParametro
