@@ -10,10 +10,6 @@ lenHelp equ $-msgHelp
 msgVersion db 'basename (GNU coreutils) 8.30',0Ah,'Copyright (C) 2018 Free Software Foundation, Inc.',0Ah,'Licença GPLv3+: GNU GPL versão 3 ou posterior <https://gnu.org/licenses/gpl.html>',0Ah,'Este é um software livre: você é livre para alterá-lo e redistribuí-lo.',0Ah,'NÃO HÁ QUALQUER GARANTIA, na máxima extensão permitida em lei.',0Ah,0Ah,'Escrito por David MacKenzie.',0Ah,0
 lenVersion equ $-msgVersion
 
-a db 'a',0
-c db 'c',0
-lenA equ $-a
-lenC equ $-c
 
 section .bss           ;Uninitialized data
     lenSuffix resb 5
@@ -21,7 +17,6 @@ section .bss           ;Uninitialized data
     suffix resb 2000
     argument resb 2000
     condicional resb 5
-    var resb 1
 
 SECTION .text
  global _start
@@ -35,8 +30,8 @@ _start:
     jl erroParametro
     
     
-    pop ebx ; remove o ./basename
-    pop ecx ; pega o primeiro argv depois de ./basename
+    pop ebx ; remove o ./mybasename
+    pop ecx ; pega o primeiro argv depois de ./mybasename
 
     cmp byte [ecx], '-' ;checa se há flags
     je flags
