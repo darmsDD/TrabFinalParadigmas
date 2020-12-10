@@ -169,7 +169,7 @@ singleFlagMultiple:
 singleFlagSufix:
    
     pop ecx ; pega o argumento do sufixo, exemplo: .c
-
+    posPopEcx: ; o caso seja --suffix=.c, o suffixo se encontra no mesmo argumento que --suffix=, assim é necessário evitar o pop ecx de cima.
     mov esi, ecx ; aponta a string(que é o sufixo) para esi
     mov eax,3
     mov [condicional],eax
@@ -294,6 +294,15 @@ doubleFlagZero:
 
 
 
+doubleFlagSufixporIgual:    
+    cmp byte [ecx+8], '='
+    jne erroParametro
+
+
+    add ecx,9 ; posição onde começa o sufixo
+   
+    jmp posPopEcx
+
 
 doubleFlagSufix:
     cmp byte [ecx+3], 'u'
@@ -307,8 +316,12 @@ doubleFlagSufix:
     cmp byte [ecx+7], 'x'
     jne erroParametro
     cmp byte [ecx+8], 0
-    jne erroParametro
+    jne doubleFlagSufixporIgual
     
+    cmp edi,1     
+    je erroParametro 
+    sub edi,1
+
     jmp singleFlagSufix
 
 
@@ -334,9 +347,7 @@ flagsDouble:
     cmp byte [ecx+2], 'z' ; zero
     je doubleFlagZero
 
-    cmp edi,1     
-    je erroParametro 
-    sub edi,1
+    
     cmp byte [ecx+2], 's' ; suffix
     je doubleFlagSufix
 
