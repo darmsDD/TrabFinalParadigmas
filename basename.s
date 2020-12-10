@@ -10,16 +10,25 @@ lenHelp equ $-msgHelp
 msgVersion db 'basename (GNU coreutils) 8.30',0Ah,'Copyright (C) 2018 Free Software Foundation, Inc.',0Ah,'Licença GPLv3+: GNU GPL versão 3 ou posterior <https://gnu.org/licenses/gpl.html>',0Ah,'Este é um software livre: você é livre para alterá-lo e redistribuí-lo.',0Ah,'NÃO HÁ QUALQUER GARANTIA, na máxima extensão permitida em lei.',0Ah,0Ah,'Escrito por David MacKenzie.',0Ah,0
 lenVersion equ $-msgVersion
 
+a db 'a',0
+c db 'c',0
+lenA equ $-a
+lenC equ $-c
+
 section .bss           ;Uninitialized data
-   buffer resb 256
-   num     resb 5
+    lenSuffix resb 5
+    lenArgument resb 5
+    suffix resb 2000
+    argument resb 2000
+    condicional resb 5
+    var resb 1
 
 SECTION .text
  global _start
         
 _start:
 
-    mov esi,0
+    
     pop ebx ; pega o argc
     mov edi,ebx
     cmp edi,2 ; checa se existe menos de 2 parâmetro
@@ -29,7 +38,7 @@ _start:
     pop ebx ; remove o ./basename
     pop ecx ; pega o primeiro argv depois de ./basename
 
-    cmp byte [ecx + edx], '-' ;checa se há flags
+    cmp byte [ecx], '-' ;checa se há flags
     je flags
 
    
@@ -60,26 +69,38 @@ gotlen:
 
 
 removeUltimaBarra:
+    
+    cmp edx,1 ; se o arquivo tiver o nome /
+    je gotlenFinish
     dec edx
 
 gotlenFinish:
-    ; imprime a string em ecx
-	mov eax,4	
+    
+
+    mov eax,[condicional]
+    cmp eax,2
+    jg trataSuffix
+    posMensagemAlterada:
+	
+    mov eax,4	
 	mov ebx,1	
 	int 80h		
 
-    cmp esi,1 ; caso a flag seja -z nao imprime /n
+    mov eax,[condicional]
+    cmp eax,1
     je exit
 
-
+    
     mov edx, 2   
     mov ecx, msg2    
     mov ebx, 1      
     mov eax, 4
     int 80h
 
-    cmp esi,2
-    je singleFlagMultiple
+
+    mov eax,[condicional]
+    cmp eax,2
+    jge singleFlagMultiple
 
 
     jmp exit   
@@ -126,21 +147,84 @@ doubleFlagHelp:
 
 
 singleFlagZero:   
-    mov esi,1
+    mov eax,1
+    mov [condicional],eax
     pop ecx
     jmp initialize
 
+
+
+initializeSingleFlagMultiple:
+    mov eax,2
+    mov [condicional],eax
 
 singleFlagMultiple:
     cmp edi,0
     je exit
     dec edi
-    mov esi,2
-    pop ecx
+    pop ecx ; pega o argumento com o caminho do documento
     jmp initialize
 
 
+singleFlagSufix:
+   
+    pop ecx ; pega o argumento do sufixo, exemplo: .c
 
+    mov esi, ecx ; aponta a string(que é o sufixo) para esi
+    mov eax,3
+    mov [condicional],eax
+
+    ; salva o tamanho do sufixo
+    mov edx,-1
+    tamanhoSuffix:
+        inc edx
+        cmp byte [ecx+edx],0
+        jne tamanhoSuffix
+
+    mov [suffix],ecx
+    mov [lenSuffix],edx
+   
+    jmp singleFlagMultiple
+
+argumentoSemSufixo:
+    mov ecx,[argument]
+    mov edx,[lenArgument]
+    jmp posMensagemAlterada
+
+
+trataSuffix:
+
+   
+    ; restaura valor de esi com o sufixo
+    mov esi, [suffix]
+
+    ; insere os novos valores do argumento atual
+    ; insere o argumento em ebx para realizar a comparação
+    mov [argument],ecx
+    mov [lenArgument], edx
+    mov ebx,ecx
+    
+    mov ecx,[lenSuffix]
+
+    ;determina onde deve começar a comparação entre o argumento e o sufixo
+    sub edx,ecx
+    cmp edx,0
+    jle  argumentoSemSufixo
+
+    ; compara o argumento e o sufixo
+    loop_here:
+        lodsb
+        cmp byte [ebx+edx],al
+        jne argumentoSemSufixo
+        inc edx
+    loop    loop_here    ;jump when ecx != 0
+    
+    
+    mov edx,[lenArgument]
+    sub edx,[lenSuffix]
+    mov ecx, [argument]
+    jmp posMensagemAlterada
+    
 
 
 doubleFlagVersion:
@@ -191,7 +275,7 @@ doubleFlagMultiple:
     cmp byte [ecx+10], 0
     jne erroParametro
 
-    jmp singleFlagMultiple
+    jmp initializeSingleFlagMultiple
 
 
 
@@ -212,13 +296,20 @@ doubleFlagZero:
 
 
 doubleFlagSufix:
-    mov edx,lenVersion    ; msg tem um total de 14 bytes
-    mov ecx, msgVersion    ; msg contém o endereço da mensagem
-    mov ebx, 1      ; A saída é o console
-    mov eax, 4      ; Optcode de SYS_WRITE
-    int 80h 
+    cmp byte [ecx+3], 'u'
+    jne erroParametro
+    cmp byte [ecx+4], 'f'
+    jne erroParametro
+    cmp byte [ecx+5], 'f'
+    jne erroParametro
+    cmp byte [ecx+6], 'i'
+    jne erroParametro
+    cmp byte [ecx+7], 'x'
+    jne erroParametro
+    cmp byte [ecx+8], 0
+    jne erroParametro
     
-    jmp exit
+    jmp singleFlagSufix
 
 
 
@@ -228,7 +319,7 @@ doubleFlagSufix:
 
 flagsDouble:
 
-    cmp byte [ecx+2], 'v' ; multiple
+    cmp byte [ecx+2], 'v' ;version
     je doubleFlagVersion
 
     cmp byte [ecx+2], 'h' ; help
@@ -236,14 +327,17 @@ flagsDouble:
 
     cmp edi,0     
     je erroParametro
-    
+
     cmp byte [ecx+2], 'm' ; multiple
     je doubleFlagMultiple
 
-    cmp byte [ecx+2], 'z' ; multiple
+    cmp byte [ecx+2], 'z' ; zero
     je doubleFlagZero
 
-    cmp byte [ecx+2], 's' ; multiple
+    cmp edi,1     
+    je erroParametro 
+    sub edi,1
+    cmp byte [ecx+2], 's' ; suffix
     je doubleFlagSufix
 
     jmp erroParametro
@@ -269,7 +363,13 @@ flags:
     je singleFlagZero
 
     cmp byte [ecx+1], 'a'
-    je singleFlagMultiple
+    je initializeSingleFlagMultiple
 
+    ; suffixo precisa de um argumento a mais minimo, ou seja 4 mínimo. ./basename -s .c main.c
+    cmp edi,1     
+    je erroParametro 
+    sub edi,1
+    cmp byte [ecx+1], 's'
+    je singleFlagSufix
 
     jmp erroParametro
